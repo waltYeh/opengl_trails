@@ -6,6 +6,7 @@
 #include <fstream>
 #include <cmath>
 #include <float.h>
+#include <queue>
 using namespace std;
 
 /////////////////////////////////////////
@@ -177,9 +178,6 @@ void Mesh::DisplayMeshInfo()
 	int NO_HEDGES = (int)heList.size()+(int)bheList.size();
 	
 	int NO_B_LOOPS = CountBoundaryLoops();
-	CountVertices();
-	CountEdges();
-	CountFaces();
 	int NO_COMPONENTS = CountConnectedComponents();
 	int NO_GENUS = NO_COMPONENTS - (NO_VERTICES - NO_HEDGES/2 +  NO_FACES + NO_B_LOOPS)/2;
 }
@@ -203,42 +201,87 @@ int Mesh::CountBoundaryLoops()
 	return no_loop;
 
 }
-
+#define DFS 0
+#define BFS 1
 int Mesh::CountConnectedComponents()
 {
+#if BFS	
 	int no_component =0;
 
-	cout<<"number of Connected components"<<endl;
-
+	size_t i,j;
+	for(i=0; i<vList.size(); i++){
+		Vertex *cur=vList[i];
+		cur->SetValid(true);
+	}
+	
+	for(i=0; i<vList.size(); i++){
+		Vertex *start=vList[i];
+		if (start->IsValid()==false)
+			continue;
+		else{
+			no_component++;
+			//invalidate all the vertices of the same
+			// component with vertix start
+			start->SetValid(false);
+		//	cout<<"invalidate start"<<i<<endl;
+			queue<Vertex*> q;
+			q.push(start);
+			while(!q.empty()){
+			//	cout<<"in loop"<<endl;
+				Vertex *curr=q.front();
+				q.pop();
+				OneRingVertex ring(curr);
+				for(j=0;j<(curr->Valence());j++){
+					Vertex *adj=ring.NextVertex();
+					if(adj->IsValid()==true){
+						adj->SetValid(false);
+					//	cout<<"invalidate"<<j<<endl;
+						q.push(adj);
+					}
+				}
+			}
+		}
+	}
+	cout << "number of components" << endl;
+	cout << no_component << endl;
 	return no_component;
-}
 
-int Mesh::CountVertices()
-{
-	int no_vertice = vList.size();
-	cout << "number of Vertices" << endl;
-	cout << no_vertice << endl;
-	return no_vertice;
-}
-int Mesh::CountEdges()
-{
-	int no_edge = heList.size()/2 + bheList.size()/2;
-	cout << "number of edges" << endl;
-	cout << no_edge << endl;
-	cout << heList.size() << "   " << bheList.size() << endl;
-	return no_edge;
-}
-int Mesh::CountFaces()
-{
-	int no_face = fList.size();
-	cout << "number of faces" << endl;
-	cout << no_face << endl;
-	return no_face;
+#elif DFS
+	int no_component =0;
+
+	size_t i,j;
+	for(i=0; i<vList.size(); i++){
+		Vertex *cur=vList[i];
+		cur->SetValid(true);
+	}
+	
+	for(i=0; i<vList.size(); i++){
+		Vertex *start=vList[i];
+		if (start->IsValid()==false)
+			continue;
+		else{
+			no_component++;
+			DFSVisit(start);
+			
+		}
+	}
+	cout << "number of components" << endl;
+	cout << no_component << endl;
+	return no_component;
+#endif
 }
 
 void Mesh::DFSVisit(Vertex * v)
 {
-	cout<<"DFS"<<endl;
+	cout << "visit once" << endl;
+	v->SetValid(false);
+	OneRingVertex ring(v);
+	for(int j=0;j<(v->Valence());j++){
+		Vertex *adj=ring.NextVertex();
+		if(adj->IsValid()==true){
+			DFSVisit(v);
+		}
+	}
 }
 
 
