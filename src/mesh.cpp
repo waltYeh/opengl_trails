@@ -201,8 +201,8 @@ int Mesh::CountBoundaryLoops()
 	return no_loop;
 
 }
-#define DFS 0
-#define BFS 1
+#define DFS 1
+#define BFS 0
 int Mesh::CountConnectedComponents()
 {
 #if BFS	
@@ -273,13 +273,13 @@ int Mesh::CountConnectedComponents()
 
 void Mesh::DFSVisit(Vertex * v)
 {
-	cout << "visit once" << endl;
+//	cout << "visit once" << endl;
 	v->SetValid(false);
 	OneRingVertex ring(v);
 	for(int j=0;j<(v->Valence());j++){
 		Vertex *adj=ring.NextVertex();
 		if(adj->IsValid()==true){
-			DFSVisit(v);
+			DFSVisit(adj);
 		}
 	}
 }
