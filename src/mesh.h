@@ -73,6 +73,7 @@ public:
 	bool    SetFlag(bool b) { return flag = b; }
 	bool    SetValid(bool b) { return valid = b; }
 	bool    IsBoundary() const { return boundary; }
+	bool	SetBoundary(bool b) { return (boundary = b); }
     bool    IsValid() const { return valid; }
 };
 
@@ -224,9 +225,18 @@ private:
 	HEdge * he;
     bool valid;
 	Vector3d normal_f;//1007
+	
 public:
+	HEdgeList heList;
 	// constructor
-	Face() : he(NULL), valid(true) { }
+	Face() : he(NULL), valid(true) 
+	{
+/*		HEdge *curr = he;
+		do {
+			heList.push_back(curr);
+			curr = curr->Next();
+		} while (curr != he);*/
+	}
     
 	const Vector3d & Normal_f() const { return normal_f; }
     const Vector3d & SetNormal_f(const Vector3d & n) { return normal_f = n; }
@@ -327,12 +337,9 @@ public:
 	int CountBoundaryLoops();
 	int CountConnectedComponents();
 	void DFSVisit(Vertex * v);
-	int CountVertices();
-	int CountEdges();
-	int CountFaces();
 
-	//void DeleteSelectedVertex(int vertex);
-	//void Deletefaces(HEdge *v_del);
+//	void DeleteSelectedVertex(int vertex);
+//	void Deletefaces(HEdge *v_del);
 };
 
 // other helper functions

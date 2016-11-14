@@ -1,23 +1,21 @@
 #ifdef WIN32
-	#include <windows.h>
+#include <windows.h>
 #endif
-//#include <GL/glut.h>
 #include "glut.h"
 #include "mesh.h"
 #include "matrix.h"
 #include "OpenGLProjector.h"
-//#include <GL/OpenGLProjector.h>
 #include <fstream>//20110819
 
 
-
+using namespace std;
 // Enumeration
-enum EnumDisplayMode { HIDDENLINE, FLATSHADED, SMOOTHSHADED, COLORSMOOTHSHADED,DELETESELECTEDVERTEX,WIREFRAME};
+enum EnumDisplayMode { HIDDENLINE, FLATSHADED, SMOOTHSHADED, COLORSMOOTHSHADED, DELETESELECTEDVERTEX, WIREFRAME };
 
-enum Mode 
-{ 
-	Viewing, 
-	Selection 
+enum Mode
+{
+	Viewing,
+	Selection
 };
 Mode currentMode = Viewing;
 
@@ -29,7 +27,7 @@ int winWidth, winHeight;		// window width and height
 double winAspect;				// winWidth / winHeight;
 int lastX, lastY;				// last mouse motion position
 int currSelectedVertex = -1;         // current selected vertex
-bool leftDown,leftUp, rightUp, rightDown, middleDown, middleUp, shiftDown;		// mouse down and shift down flags
+bool leftDown, leftUp, rightUp, rightDown, middleDown, middleUp, shiftDown;		// mouse down and shift down flags
 double sphi = 90.0, stheta = 45.0, sdepth = 10;	// for simple trackball
 double xpan = 0.0, ypan = 0.0;				// for simple trackball
 double zNear = 1.0, zFar = 100.0;
@@ -64,9 +62,9 @@ void DeleteSelectedVertex(int vertex);
 void SetBoundaryBox(const Vector3d & bmin, const Vector3d & bmax) {
 	double PI = 3.14159265358979323846;
 	double radius = bmax.Distance(bmin);
-	g_center = 0.5 * (bmin+bmax);
-	zNear    = 0.2 * radius / sin(0.5 * g_fov * PI / 180.0);
-	zFar     = zNear + 2.0 * radius;
+	g_center = 0.5 * (bmin + bmax);
+	zNear = 0.2 * radius / sin(0.5 * g_fov * PI / 180.0);
+	zFar = zNear + 2.0 * radius;
 	g_sdepth = zNear + radius;
 	zNear *= 0.1;
 	zFar *= 10;
@@ -75,7 +73,7 @@ void SetBoundaryBox(const Vector3d & bmin, const Vector3d & bmax) {
 
 // init openGL environment
 void InitGL() {
-	GLfloat light0Position[] = { 0, 1, 0, 1.0 }; 
+	GLfloat light0Position[] = { 0, 1, 0, 1.0 };
 
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
 	glutInitWindowSize(500, 500);
@@ -87,7 +85,7 @@ void InitGL() {
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_COLOR_MATERIAL);
 	glColorMaterial(GL_FRONT, GL_DIFFUSE);
-	glLightfv (GL_LIGHT0, GL_POSITION, light0Position);
+	glLightfv(GL_LIGHT0, GL_POSITION, light0Position);
 	glEnable(GL_LIGHT0);
 
 	glutReshapeFunc(ReshapeFunc);
@@ -105,7 +103,7 @@ void InitMenu() {
 	glutAddMenuEntry("Flat Shaded", FLATSHADED);
 	glutAddMenuEntry("Smooth Shaded", SMOOTHSHADED);
 	glutAddMenuEntry("Color Smooth Shaded", COLORSMOOTHSHADED);
-    glutAddMenuEntry("Delete Selected Vertex", DELETESELECTEDVERTEX);
+	glutAddMenuEntry("Delete Selected Vertex", DELETESELECTEDVERTEX);
 	mainMenu = glutCreateMenu(MenuCallback);
 	glutAddSubMenu("Display", displayMenu);
 	glutAddMenuEntry("Exit", 99);
@@ -121,8 +119,8 @@ void InitGeometry() {
 	Vertex *v[VSIZE];
 	HEdge *he[HESIZE];
 	Face *f[FSIZE];
-	
-	for (i=0; i<VSIZE; i++) {
+
+	for (i = 0; i<VSIZE; i++) {
 		v[i] = new Vertex();
 		mesh.vList.push_back(v[i]);
 	}
@@ -136,20 +134,20 @@ void InitGeometry() {
 	v[2]->SetNormal(Vector3d(-0.7, 0.0, -0.7));
 	v[3]->SetNormal(Vector3d(-0.7, -0.7, 0.0));
 
-	for (i=0; i<FSIZE; i++) {
+	for (i = 0; i<FSIZE; i++) {
 		f[i] = new Face();
 		mesh.fList.push_back(f[i]);
 	}
 
-	for (i=0; i<HESIZE; i++) {
+	for (i = 0; i<HESIZE; i++) {
 		he[i] = new HEdge();
 		mesh.heList.push_back(he[i]);
 	}
-	for (i=0; i<FSIZE; i++) {
-		int base = i*3;
-		SetPrevNext(he[base], he[base+1]);
-		SetPrevNext(he[base+1], he[base+2]);
-		SetPrevNext(he[base+2], he[base]);
+	for (i = 0; i<FSIZE; i++) {
+		int base = i * 3;
+		SetPrevNext(he[base], he[base + 1]);
+		SetPrevNext(he[base + 1], he[base + 2]);
+		SetPrevNext(he[base + 2], he[base]);
 		SetFace(f[i], he[base]);
 	}
 	SetTwin(he[0], he[4]);
@@ -172,7 +170,7 @@ void InitGeometry() {
 void MenuCallback(int value) {
 	switch (value) {
 	case 99: exit(0); break;
-	default: 
+	default:
 		displayMode = value;
 		glutPostRedisplay();
 		break;
@@ -183,7 +181,7 @@ void MenuCallback(int value) {
 void ReshapeFunc(int width, int height) {
 	winWidth = width;
 	winHeight = height;
-	winAspect = (double)width/(double)height;
+	winAspect = (double)width / (double)height;
 	glViewport(0, 0, width, height);
 	glutPostRedisplay();
 }
@@ -195,7 +193,7 @@ void DisplayFunc() {
 	gluPerspective(g_fov, winAspect, zNear, zFar);
 
 	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity(); 
+	glLoadIdentity();
 	glTranslatef(xpan, ypan, -sdepth);
 	glRotatef(-stheta, 1.0, 0.0, 0.0);
 	glRotatef(sphi, 0.0, 1.0, 0.0);
@@ -204,12 +202,28 @@ void DisplayFunc() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	switch (displayMode) {
-	case WIREFRAME: DrawWireframe(); break;
-	case HIDDENLINE: DrawHiddenLine(); break;
-	case FLATSHADED: DrawFlatShaded(); break;
-	case SMOOTHSHADED: DrawSmoothShaded(); break;
-	case COLORSMOOTHSHADED: DrawColorSmoothShaded(); break;
-	case DELETESELECTEDVERTEX: DeleteSelectedVertex(currSelectedVertex); break;
+	case WIREFRAME:
+		DrawWireframe();
+		break;
+	case HIDDENLINE:
+		DrawHiddenLine();
+		break;
+	case FLATSHADED:
+		DrawFlatShaded();
+		DrawSelectedVertices();
+		break;
+	case SMOOTHSHADED:
+		DrawSmoothShaded();
+		DrawSelectedVertices();
+		break;
+	case COLORSMOOTHSHADED:
+		DrawColorSmoothShaded();
+		break;
+	case DELETESELECTEDVERTEX: {
+								   DrawFlatShaded();
+								   //	DeleteSelectedVertex(currSelectedVertex);
+	}
+		break;
 	}
 
 	glutSwapBuffers();
@@ -222,28 +236,35 @@ void DrawWireframe() {
 	glColor3f(0.3, 0.3, 1.0);
 	glBegin(GL_LINES);
 	size_t i;
-	for (i=0; i<heList.size(); i++) {
+	for (i = 0; i<heList.size(); i++) {
 		glVertex3dv(heList[i]->Start()->Position().ToArray());
 		glVertex3dv(heList[i]->End()->Position().ToArray());
 	}
-    
-	glColor3f(1, 0, 0);
-	for (i=0; i<bheList.size(); i++) {
+
+	glColor3f(1, 0.0, 0.0);
+	for (i = 0; i<bheList.size(); i++) {
 		glVertex3dv(bheList[i]->Start()->Position().ToArray());
 		glVertex3dv(bheList[i]->End()->Position().ToArray());
 	}
-	
+
+	glEnd();
+	glPointSize(5.0f);
+	glColor3f(1, 0.1, 0.1);
+	glBegin(GL_POINTS);
+	for (i = 0; i<heList.size(); i++) {
+		glVertex3dv(heList[i]->Start()->Position().ToArray());
+	}
 	glEnd();
 }
 
 // Hidden Line render function
 void DrawHiddenLine() {
 	FaceList fList = mesh.Faces();
-	glShadeModel(GL_FLAT); 
+	glShadeModel(GL_FLAT);
 	glEnable(GL_POLYGON_OFFSET_FILL);
 	glColor3f(0, 0, 0);
 	glBegin(GL_TRIANGLES);
-	for (size_t i=0; i<fList.size(); i++) {
+	for (size_t i = 0; i<fList.size(); i++) {
 		Face *f = fList[i];
 		const Vector3d & pos1 = f->HalfEdge()->Start()->Position();
 		const Vector3d & pos2 = f->HalfEdge()->End()->Position();
@@ -261,40 +282,40 @@ void DrawHiddenLine() {
 // Flat Shaded render function
 void DrawFlatShaded() {
 	FaceList fList = mesh.Faces();
-	glShadeModel(GL_FLAT); 
+	glShadeModel(GL_FLAT);
 	glEnable(GL_LIGHTING);
 	glColor3f(0.4f, 0.4f, 1.0f);
 	glBegin(GL_TRIANGLES);
-	for (size_t i=0; i<fList.size(); i++) {
-		if(fList[i]!=NULL && fList[i]->HalfEdge()->LeftFace()!=NULL )
+	for (size_t i = 0; i<fList.size(); i++) {
+		if (fList[i] != NULL && fList[i]->HalfEdge()->LeftFace() != NULL)
 		{
-		Face *f = fList[i];
-		const Vector3d & pos1 = f->HalfEdge()->Start()->Position();
-		const Vector3d & pos2 = f->HalfEdge()->End()->Position();
-		const Vector3d & pos3 = f->HalfEdge()->Next()->End()->Position();
-		Vector3d normal = (pos2-pos1).Cross(pos3-pos1);
-		normal /= normal.L2Norm();
-        
-		f->SetNormal_f(normal);//1007
-        
-		glNormal3dv(normal.ToArray());
-		glVertex3dv(pos1.ToArray());
-		glVertex3dv(pos2.ToArray());
-		glVertex3dv(pos3.ToArray());
+			Face *f = fList[i];
+			const Vector3d & pos1 = f->HalfEdge()->Start()->Position();
+			const Vector3d & pos2 = f->HalfEdge()->End()->Position();
+			const Vector3d & pos3 = f->HalfEdge()->Next()->End()->Position();
+			Vector3d normal = (pos2 - pos1).Cross(pos3 - pos1);
+			normal /= normal.L2Norm();
+
+			f->SetNormal_f(normal);//1007
+
+			glNormal3dv(normal.ToArray());
+			glVertex3dv(pos1.ToArray());
+			glVertex3dv(pos2.ToArray());
+			glVertex3dv(pos3.ToArray());
 		}
 	}
 	glEnd();
-	glDisable(GL_LIGHTING);
+	
 }
 
 // Smooth Shaded render function
-void DrawSmoothShaded() { 
+void DrawSmoothShaded() {
 	FaceList fList = mesh.Faces();
-	glShadeModel(GL_SMOOTH); 
+	glShadeModel(GL_SMOOTH);
 	glEnable(GL_LIGHTING);
 	glColor3f(0.4f, 0.4f, 1.0f);
-	glBegin(GL_TRIANGLES) ;
-	for (size_t i=0; i<fList.size(); i++) {
+	glBegin(GL_TRIANGLES);
+	for (size_t i = 0; i<fList.size(); i++) {
 		Face *f = fList[i];
 		Vertex * v1 = f->HalfEdge()->Start();
 		Vertex * v2 = f->HalfEdge()->End();
@@ -311,45 +332,159 @@ void DrawSmoothShaded() {
 }
 
 void DrawColorSmoothShaded() {
-	cout<< "the colored smooth model is drawn"<<endl;
+	cout << "the colored smooth model is drawn" << endl;
 }
 
- 
 
+/*********/
 // draw the selected ROI vertices on the mesh
 void DrawSelectedVertices()
 {
-cout<< "the selected vertex is drawn "<<endl;
+//	DrawFlatShaded();
+//	DisplayFunc();
+	if (currSelectedVertex != -1)
+	{
+		VertexList vList = mesh.Vertices();
+		glPointSize(5.0f);
+		glColor3f(1.0, 0.1, 0.1);
+		glBegin(GL_POINTS);
+		glVertex3dv(vList[currSelectedVertex]->Position().ToArray());
+		glEnd();
+		cout << "The selected vertex has been drawn" << endl;
+	}
+	else
+	{
+		//	cout << "You haven't selected any vertex" << endl;
+	}
+	glDisable(GL_LIGHTING);
+//	cout << "the selected vertex is drawn " << endl;
 }
-
+void DeleteHEdge_in_mesh(HEdge * he)
+{
+	vector<HEdge*>::iterator it = find(mesh.heList.begin(), mesh.heList.end(), he);
+	int index = distance(mesh.heList.begin(), it);
+	if (index > mesh.heList.size() - 1)
+		return;
+//	if (mesh.heList[index] != NULL)
+//		delete mesh.heList[index];
+	mesh.heList[index] = NULL;
+	mesh.heList.erase(it);
+}
+void DeleteFace_in_mesh(Face * face)
+{
+	vector<Face*>::iterator itf = find(mesh.fList.begin(), mesh.fList.end(), face);
+	int index = distance(mesh.fList.begin(), itf);
+	if (index > mesh.fList.size() - 1)
+		return;
+//	if (mesh.fList[index]!=NULL)
+//		delete mesh.fList[index];
+	mesh.fList[index] = NULL;
+	mesh.fList.erase(itf);
+}
 //delete selected vertex and its incident faces and half-edges
-
 void DeleteSelectedVertex(int vertex)
 {
-   
-	cout<< "the selected vertex is gone, its index is "<<endl;
-} 
+	int index;
+	HEdge * currHEdge = mesh.vList[vertex]->HalfEdge();
+	int adjNum = mesh.vList[vertex]->Valence();
+	int i = 0;
+	do{
+		i++;
+		vector<HEdge*>::iterator it;
+		SetPrevNext(currHEdge->Twin()->Prev(), currHEdge->Next());
+		mesh.bheList.push_back(currHEdge->Twin()->Prev());
+		mesh.bheList.push_back(currHEdge->Twin()->Prev()->Twin());
+		currHEdge = currHEdge->Twin();//****************
+		HEdge * currTwin = currHEdge->Twin();
+		DeleteHEdge_in_mesh(currTwin);
+		if (i<adjNum){
+			if (currHEdge == currHEdge->Start()->HalfEdge()){
+				currHEdge->Start()->SetHalfEdge(currHEdge->Twin()->Next());
+			}
+			currHEdge = currHEdge->Next();//****************
+			HEdge* currPrev = currHEdge->Prev();
+			DeleteHEdge_in_mesh(currPrev);
+			Face* currFace = currHEdge->LeftFace();
+			DeleteFace_in_mesh(currFace);
+		}
+		else
+			break;
+	} while (1);
+	Face* currFace = currHEdge->LeftFace();
+	DeleteFace_in_mesh(currFace);
+	DeleteHEdge_in_mesh(currHEdge);
+//	delete mesh.vList[vertex];
+	mesh.vList[vertex] = NULL;
+	vector<Vertex*>::iterator itv = mesh.vList.begin()+vertex;
+	mesh.vList.erase(itv);
+	for (int i = 0; i < mesh.bheList.size(); i++){
+		vector<HEdge*>::iterator it = find(mesh.heList.begin(), mesh.heList.end(), mesh.bheList[i]);
+		if (it != mesh.heList.end()){
+			index = distance(mesh.heList.begin(), it);
+			mesh.heList[index] = NULL;
+			mesh.heList.erase(it);
+		}
+	}
+	cout << "the selected vertex is gone, its index is " << currSelectedVertex << endl;
 
+	/*
+	Face * face = currHEdge->LeftFace();
+	HEdge *curr = face->HalfEdge();
+	do{
+	//	curr->End()->;
+	curr->SetBoundary(TRUE);
+	curr = curr->Next();
+	} while (curr != face->HalfEdge());
+
+	face = NULL;
+	delete face;
+	*/
+
+
+	/*
+	FaceList fList = mesh.Faces();
+	VertexList vList = mesh.Vertices();
+	Vertex *currHEdgerVert = vList[vertex];
+	for (size_t i = 0; i <(currHEdgerVert->adjHEdges).size(); i++)//遍历所有与该顶点相连的边
+	{
+		HEdge *currHEdge = currHEdgerVert->adjHEdges[i];
+		if(currHEdge->Next()->Start()->HalfEdge()==currHEdge->Twin())
+		{
+			cout << "需要修改点的所在半边" << endl;
+			currHEdge->Next()->Start()->SetHalfEdge(currHEdge->Next()->Twin()->Prev());
+		}
+
+		SetPrevNext(currHEdge->Twin()->Prev(), currHEdge->Next());//修改半边之间的前后关系
+
+		currHEdge->SetFace(NULL);
+		currHEdge->Twin()->SetFace(NULL);
+		currHEdge->Next()->SetFace(NULL);
+	}
+	
+
+	*/
+}
+/****/
 
 // GLUT keyboard callback function
-void KeyboardFunc(unsigned char ch, int x, int y) { 
-	switch (ch) { 
+void KeyboardFunc(unsigned char ch, int x, int y) {
+	switch (ch) {
 	case '3':
 
-		cout<<"0003"<<endl;
+		cout << "0003" << endl;
 
-		break; 
+		break;
 	case '4':
 
-		cout<<"0004"<<endl;;
+		cout << "0004" << endl;;
 
 		break;
 	case '5':
-        cout<<"0005"<<endl;
-        break;
+		cout << "0005" << endl;
+		break;
 	case '6':
-        cout<<"0006"<<endl;
-        break;
+		cout << "0006" << endl;
+		break;
 
 	case '1':	// key '1'
 		currentMode = Viewing;
@@ -360,8 +495,9 @@ void KeyboardFunc(unsigned char ch, int x, int y) {
 		cout << "Selection mode" << endl;
 		break;
 
-	case '9': 
-		cout<<"0009"<<endl;
+	case '9':
+		cout << "0009" << endl;
+		DeleteSelectedVertex(currSelectedVertex);
 		break;
 		//cout<<"test000 "<<currSelectedVertex<<endl;
 	case 27:
@@ -373,37 +509,41 @@ void KeyboardFunc(unsigned char ch, int x, int y) {
 
 // GLUT mouse callback function
 void MouseFunc(int button, int state, int x, int y) {
-	
+
 	lastX = x;
 	lastY = y;
 	leftDown = (button == GLUT_LEFT_BUTTON) && (state == GLUT_DOWN);
 	leftUp = (button == GLUT_LEFT_BUTTON) && (state == GLUT_UP);
-    rightDown = (button == GLUT_RIGHT_BUTTON) && (state == GLUT_DOWN);
+	rightDown = (button == GLUT_RIGHT_BUTTON) && (state == GLUT_DOWN);
 	rightUp = (button == GLUT_RIGHT_BUTTON) && (state == GLUT_UP);
 	middleDown = (button == GLUT_MIDDLE_BUTTON) && (state == GLUT_DOWN);
 	middleUp = (button == GLUT_MIDDLE_BUTTON) && (state == GLUT_UP);
 	shiftDown = (glutGetModifiers() & GLUT_ACTIVE_SHIFT);
 
-	if (currentMode == Selection && state == GLUT_UP)
+	if ((currentMode == Selection) && state == GLUT_UP)
 	{
-	    if (middleUp)
+		if (middleUp)//middle button
 		{
-		    if (currSelectedVertex != -1)
-		    {
-		        mesh.Vertices()[currSelectedVertex]->SetFlag(0);
-		        currSelectedVertex = -1;
-		    }
+			if (currSelectedVertex != -1)
+			{
+				mesh.Vertices()[currSelectedVertex]->SetFlag(0);
+				currSelectedVertex = -1;
+			}
 		}
-		else SelectVertexByPoint();
-		
+		else{
+			SelectVertexByPoint();
+			DrawSelectedVertices();
+		}
+
+
 		//if (leftUp)
-	    //{
-		  //  SelectVertexByPoint(); 
-			
+		//{
+		//  SelectVertexByPoint(); 
+
 		//}
-        //if(middleUp)
+		//if(middleUp)
 		//{DeleteSelectedVertex(currSelectedVertex);}
-        
+
 		lastX = lastY = 0;
 		glutPostRedisplay();
 	}
@@ -413,13 +553,14 @@ void MouseFunc(int button, int state, int x, int y) {
 // GLUT mouse motion callback function
 void MotionFunc(int x, int y) {
 	if (leftDown)
-		if(!shiftDown) { // rotate
-			sphi += (double)(x - lastX) / 4.0;
-			stheta += (double)(lastY - y) / 4.0;
-		} else { // pan
-			xpan += (double)(x - lastX)*sdepth/zNear/winWidth;
-			ypan += (double)(lastY - y)*sdepth/zNear/winHeight;
-		}
+	if (!shiftDown) { // rotate
+		sphi += (double)(x - lastX) / 4.0;
+		stheta += (double)(lastY - y) / 4.0;
+	}
+	else { // pan
+		xpan += (double)(x - lastX)*sdepth / zNear / winWidth;
+		ypan += (double)(lastY - y)*sdepth / zNear / winHeight;
+	}
 	// scale
 	if (middleDown) sdepth += (double)(lastY - y) / 10.0;
 
@@ -428,18 +569,29 @@ void MotionFunc(int x, int y) {
 	glutPostRedisplay();
 }
 
-
+/*******/
 // select a mesh point
 void SelectVertexByPoint()
 {
 	// get the selection position
 	int x = lastX, y = winHeight - lastY;
-	Vector3d u(x,y,0);
-	
-	OpenGLProjector projector; 
-
-	
+	OpenGLProjector projector;
+	double z = projector.GetDepthValue(x, y);
+	Vector3d u(x, y, z);
+	Vector3d selected_pos = projector.UnProject(u);
+	int nearest_index = 0;
+	double nearest_dist = (mesh.vList[0]->Position() - selected_pos).L2Norm();
+	for (size_t i = 1; i < mesh.vList.size(); i++){
+		double cur_dist = (mesh.vList[i]->Position() - selected_pos).L2Norm();
+		if (cur_dist < nearest_dist){
+			nearest_index = i;
+			nearest_dist = cur_dist;
+		}
+	}
+	//	cout << nearest_index << endl;
+	currSelectedVertex = nearest_index;
 }
+/*****/
 
 
 // main function

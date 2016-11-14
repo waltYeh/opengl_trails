@@ -7,6 +7,7 @@
 #include <cmath>
 #include <float.h>
 #include <queue>
+#include <algorithm>
 using namespace std;
 
 /////////////////////////////////////////
@@ -148,16 +149,17 @@ bool Mesh::LoadObjFile(const char *filename) {
 	ifs.close();
 
 	size_t i;
+	//rescale the model -- unify
 	Vector3d box = this->MaxCoord() - this->MinCoord();
 	for (i=0; i<vList.size(); i++) vList[i]->SetPosition(vList[i]->Position() / box.X());
-
+	//re-place the model's origin
 	Vector3d tot;
 	for (i=0; i<vList.size(); i++) tot += vList[i]->Position();
 	Vector3d avg = tot / vList.size();
 	for (i=0; i<vList.size(); i++) vList[i]->SetPosition(vList[i]->Position() - avg);
 
 	HEdgeList list;
-	for (i=0; i<bheList.size(); i++)
+	for (i=0; i<bheList.size(); i++)//boundary half edge
 		if (bheList[i]->Start()) list.push_back(bheList[i]);
 	bheList = list;
 
@@ -178,7 +180,18 @@ void Mesh::DisplayMeshInfo()
 	int NO_HEDGES = (int)heList.size()+(int)bheList.size();
 	
 	int NO_B_LOOPS = CountBoundaryLoops();
+	
 	int NO_COMPONENTS = CountConnectedComponents();
+
+	cout << "number of vertices" << endl;
+	cout << NO_VERTICES << endl;
+	cout << "number of faces" << endl;
+	cout << NO_FACES << endl;
+	cout << "number of edges" << endl;
+	cout << NO_HEDGES << endl;
+	cout << "number of components" << endl;
+	cout << NO_COMPONENTS << endl;
+
 	int NO_GENUS = NO_COMPONENTS - (NO_VERTICES - NO_HEDGES/2 +  NO_FACES + NO_B_LOOPS)/2;
 }
 
@@ -283,8 +296,6 @@ void Mesh::DFSVisit(Vertex * v)
 		}
 	}
 }
-
-
 // -------------------------------------------------------
 // DO NOT TOUCH THE FOLLOWING FOR NOW
 // -------------------------------------------------------
@@ -305,4 +316,8 @@ void Mesh::ImplicitUmbrellaSmooth()
 void Mesh::ComputeVertexCurvatures()
 {
 	cout<< "Vertex Curvatures"<<endl;
+}
+void DeleteVertex(Vertex * v)
+{
+
 }
