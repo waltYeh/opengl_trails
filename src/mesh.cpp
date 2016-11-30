@@ -262,7 +262,7 @@ int Mesh::CountConnectedComponents()
 #elif DFS
 	int no_component =0;
 
-	size_t i,j;
+	size_t i;
 	for(i=0; i<vList.size(); i++){
 		Vertex *cur=vList[i];
 		cur->SetValid(true);
@@ -301,21 +301,328 @@ void Mesh::DFSVisit(Vertex * v)
 // -------------------------------------------------------
 void Mesh::ComputeVertexNormals()
 {
-	cout<<"vertex normal"<<endl;
+	for (size_t i = 0; i < vList.size(); i++) {
+		Vertex* v = vList[i];
+		OneRingHEdge ringHE1(v);
+		Vector3d norm1(0, 0, 0);
+		for (int j = 0; j < (v->Valence()); j++){
+			HEdge *adj = ringHE1.NextHEdge();
+			Face *ringF = adj->LeftFace();
+			if (ringF != NULL){
+				//	double area;
+				Vertex * v1 = ringF->HalfEdge()->Start();
+				Vertex * v2 = ringF->HalfEdge()->End();
+				Vertex * v3 = ringF->HalfEdge()->Next()->End();
+				double area = Area(v1->Position(), v2->Position(), v3->Position());
+				norm1 += ringF->Normal_f()*area;
+			}
+
+		}
+		norm1 /= norm1.L2Norm();
+		v->SetNormal(norm1);
+	}
 }
 
 void Mesh::UmbrellaSmooth() 
 {
-	cout<<"Umbrella Smooth starts..."<<endl;
+#define GAUSS_CURV_SCHEME 0
+#define MEAN_CURV_SCHEME 0
+#define MAX_PRINC_CURV_SCHEME 0
+#define MIN_PRINC_CURV_SCHEME 1
+
+	//Gaussian curvature
+	size_t i;
+	double min_c = 200000;//initialize the maximum value of curvature
+	double max_c = -200000;//initialize the minimum value of curvature
+	//	VertexList vList = mesh.vList;
+	for (i = 0; i < vList.size(); i++)
+	{
+		if (!vList[i]->IsBoundary()) //for interior vertices only
+		{
+			double  v_A_1 = 0.0; //initialize the area of any face incident to each vertex v
+			double  v_A = 0.0;//the area of all face incident to vertex v
+			double  Angle_v_1 = 0.0; //initialize any angle incident on each vertex v
+			double  Angle_v = 0.0;//the angles incident on vertex v
+
+			double cot_sum = 0.0;//coefficient of (vj - vi) in the mean curvature function
+			Vector3d color_v(0.0, 0.0, 0.0);
+
+			HEdge *cur = vList[i]->HalfEdge();
+			HEdge *nex = cur;
+			while (nex && nex->Prev()->Twin() != cur)
+			{
+				if (nex && !nex->IsBoundary())//exclude the holes formed by boundary loops
+				{
+					const Vector3d & pos1 = vList[i]->Position();//p1
+					const Vector3d & pos2 = nex->End()->Position();//p2
+					const Vector3d & pos3 = nex->Prev()->Start()->Position();//p3
+					if (!vList[i]->IsBoundary())//if the current vertex is an interior vertex
+					{
+						const Vector3d & pos4 = nex->Prev()->Twin()->Prev()->Start()->Position();//p4, for computing the mean curvature
+						cot_sum = Cot(pos1, pos2, pos3) + Cot(pos1, pos4, pos3);
+						color_v = color_v + cot_sum*(pos3 - pos1);
+
+					}
+					v_A_1 = Area(pos1, pos2, pos3);
+					v_A = v_A + v_A_1;//SUM
+
+					Vector3d v1 = pos2 - pos1;
+					Vector3d v2 = pos3 - pos1;
+					v1 /= v1.L2Norm();
+					v2 /= v2.L2Norm();
+					double temp = v1.Dot(v2);
+					Angle_v_1 = acos(temp);
+					Angle_v = Angle_v + Angle_v_1;
+				}
+
+				nex = nex->Prev()->Twin();
+
+			}
+
+			//process the last nex
+			if (nex && !nex->IsBoundary())
+			{
+				const Vector3d & pos1 = vList[i]->Position();//p1
+				const Vector3d & pos2 = nex->End()->Position();//p2
+				const Vector3d & pos3 = nex->Prev()->Start()->Position();//p3
+				if (!vList[i]->IsBoundary())//if the current vertex is an interior vertex
+				{
+					const Vector3d & pos4 = nex->Prev()->Twin()->Prev()->Start()->Position();//p4, for computing the mean curvature
+					cot_sum = Cot(pos1, pos2, pos3) + Cot(pos1, pos4, pos3);
+					color_v = color_v + cot_sum*(pos3 - pos1);
+
+				}
+
+				v_A_1 = Area(pos1, pos2, pos3);
+				v_A = v_A + v_A_1;//SUM
+
+				//computing the sum of angles for Gaussian curvature
+				Vector3d v1 = pos2 - pos1;
+				Vector3d v2 = pos3 - pos1;
+				v1 /= v1.L2Norm();
+				v2 /= v2.L2Norm();
+				double temp = v1.Dot(v2);
+				Angle_v_1 = acos(temp);
+				Angle_v = Angle_v + Angle_v_1;
+			}//end if
+
+//			double PI = 3.14159265358979323846;
+//			double G = (2.0 / v_A)*(2 * PI - Angle_v);//Gaussian curvature
+			Vector3d L = color_v / (2 * v_A); //mean curvature   
+			double lamda = 0.0002;
+			vList[i]->SetPosition(vList[i]->Position() + lamda*L);
+			//compute principle curvatures
+
+		}
+	}
 }
 
 void Mesh::ImplicitUmbrellaSmooth()
 {
     cout<< "Implicit Umbrella Smooth starts..."<<endl;
 }
+
 void Mesh::ComputeVertexCurvatures()
 {
-	cout<< "Vertex Curvatures"<<endl;
+#define GAUSS_CURV_SCHEME 0
+#define MEAN_CURV_SCHEME 0
+#define MAX_PRINC_CURV_SCHEME 0
+#define MIN_PRINC_CURV_SCHEME 1
+	
+	//Gaussian curvature
+	size_t i;
+	double min_c = 200000;//initialize the maximum value of curvature
+	double max_c = -200000;//initialize the minimum value of curvature
+	//	VertexList vList = mesh.vList;
+	for (i = 0; i< vList.size(); i++)
+	{
+		if (!vList[i]->IsBoundary()) //for interior vertices only
+		{
+			double  v_A_1 = 0.0; //initialize the area of any face incident to each vertex v
+			double  v_A = 0.0;//the area of all face incident to vertex v
+			double  Angle_v_1 = 0.0; //initialize any angle incident on each vertex v
+			double  Angle_v = 0.0;//the angles incident on vertex v
+
+			double cot_sum = 0.0;//coefficient of (vj - vi) in the mean curvature function
+			Vector3d color_v(0.0, 0.0, 0.0);
+
+			HEdge *cur = vList[i]->HalfEdge();
+			HEdge *nex = cur;
+			while (nex && nex->Prev()->Twin() != cur)
+			{
+				if (nex && !nex->IsBoundary())//exclude the holes formed by boundary loops
+				{
+					const Vector3d & pos1 = vList[i]->Position();//p1
+					const Vector3d & pos2 = nex->End()->Position();//p2
+					const Vector3d & pos3 = nex->Prev()->Start()->Position();//p3
+					if (!vList[i]->IsBoundary())//if the current vertex is an interior vertex
+					{
+						const Vector3d & pos4 = nex->Prev()->Twin()->Prev()->Start()->Position();//p4, for computing the mean curvature
+						cot_sum = Cot(pos1, pos2, pos3) + Cot(pos1, pos4, pos3);
+						color_v = color_v + cot_sum*(pos3 - pos1);
+
+					}
+					v_A_1 = Area(pos1, pos2, pos3);
+					v_A = v_A + v_A_1;//SUM
+
+					Vector3d v1 = pos2 - pos1;
+					Vector3d v2 = pos3 - pos1;
+					v1 /= v1.L2Norm();
+					v2 /= v2.L2Norm();
+					double temp = v1.Dot(v2);
+					Angle_v_1 = acos(temp);
+					Angle_v = Angle_v + Angle_v_1;
+				}
+
+				nex = nex->Prev()->Twin();
+
+			}
+
+			//process the last nex
+			if (nex && !nex->IsBoundary())
+			{
+				const Vector3d & pos1 = vList[i]->Position();//p1
+				const Vector3d & pos2 = nex->End()->Position();//p2
+				const Vector3d & pos3 = nex->Prev()->Start()->Position();//p3
+				if (!vList[i]->IsBoundary())//if the current vertex is an interior vertex
+				{
+					const Vector3d & pos4 = nex->Prev()->Twin()->Prev()->Start()->Position();//p4, for computing the mean curvature
+					cot_sum = Cot(pos1, pos2, pos3) + Cot(pos1, pos4, pos3);
+					color_v = color_v + cot_sum*(pos3 - pos1);
+
+				}
+
+				v_A_1 = Area(pos1, pos2, pos3);
+				v_A = v_A + v_A_1;//SUM
+
+				//computing the sum of angles for Gaussian curvature
+				Vector3d v1 = pos2 - pos1;
+				Vector3d v2 = pos3 - pos1;
+				v1 /= v1.L2Norm();
+				v2 /= v2.L2Norm();
+				double temp = v1.Dot(v2);
+				Angle_v_1 = acos(temp);
+				Angle_v = Angle_v + Angle_v_1;
+			}//end if
+
+			double PI = 3.14159265358979323846;
+			double G = (2.0 / v_A)*(2 * PI - Angle_v);//Gaussian curvature
+			double H = -color_v.L2Norm() / (2 * v_A); //mean curvature   
+
+			//compute principle curvatures
+			double K1 = H + sqrt(fabs(H*H - G));//max principle curvature
+
+			double K2 = H - sqrt(fabs(H*H - G));//min principle curvature
+			//remember different types of curvatures for each 
+			vList[i]->G = G; //record gaussian curvature at vList[i]
+			vList[i]->H = H; //record mean curvature at vList[i]
+			vList[i]->K1 = K1; //record max principle curvature at vList[i]
+			vList[i]->K2 = K2; //record min principle curvature at vList[i]
+#if MAX_PRINC_CURV_SCHEME
+			//"max principal curvature" scheme
+			if(K1 < min_c) // reset min curvatures
+			min_c = K1;
+			if(K1 > max_c) //reset max curvatures
+			max_c = K1;
+
+#elif MIN_PRINC_CURV_SCHEME			
+			//"min principal curvature" scheme
+			if (K2 < min_c) // reset min curvatures
+				min_c = K2;
+			if (K2 > max_c) //reset max curvatures
+				max_c = K2;
+#elif MEAN_CURV_SCHEME		
+			//"mean curvature" scheme
+			if(H < min_c) // reset min curvatures
+			min_c = H;
+			if(H > max_c) //reset max curvatures
+			max_c = H;
+#elif GAUSS_CURV_SCHEME		
+			//"Gaussian curvature" scheme
+			if(G < min_c) // reset min curvatures
+			min_c = G;
+			if(G > max_c) //reset max curvatures
+			max_c = G;
+#endif
+		}//end 'if' condition for interior vertices
+
+	}//end the first 'for' loop
+
+	/**********interpolation based on the scheme of [0->1] equals [blue->red]**********/
+#if MAX_PRINC_CURV_SCHEME
+	//"max principal curvature" scheme
+
+	for (i=0; i< vList.size(); i++)
+	{
+	if(!vList[i]->IsBoundary())//process interior vertices
+	{
+	Vector3d color_max((vList[i]->K1 - min_c)/(max_c - min_c),0.0,1-(vList[i]->K1 - min_c)/(max_c - min_c));
+	vList[i]->SetColor(color_max);
+	}
+	else //process boundary vertices
+	{
+	Vector3d color_max(0.0,0.0,0.0);
+	vList[i]->SetColor(color_max);
+	}
+	}//end this for
+
+	
+#elif MIN_PRINC_CURV_SCHEME		
+	//"min principal curvature" scheme
+	for (i = 0; i< vList.size(); i++)
+	{
+		if (!vList[i]->IsBoundary())//process interior vertices
+		{
+			Vector3d color_min;
+			float r = (vList[i]->K2 - min_c) / (max_c - min_c);
+			if (r<0.8)
+				color_min = Vector3d(0, 1, 0);
+			else color_min = Vector3d(r, 0, 1 - r);
+			vList[i]->SetColor(color_min);
+		}
+		else //process boundary vertices
+		{
+			Vector3d color_max(0.0, 0.0, 0.0);
+			vList[i]->SetColor(color_max);
+		}
+	}//end this for
+
+
+#elif MEAN_CURV_SCHEME	
+	//"mean curvature" scheme
+	for (i=0; i< vList.size(); i++) 
+	{ 
+	  if(!vList[i]->IsBoundary())//process interior vertices
+	  {
+	    Vector3d color_mean((vList[i]->H - min_c)/(max_c - min_c),0.0,1-(vList[i]->H - min_c)/(max_c - min_c));
+	    vList[i]->SetColor(color_mean); 
+	  }
+	  else //process boundary vertices
+	  {
+		Vector3d color_mean(0.0,0.0,0.0);
+	    vList[i]->SetColor(color_mean); 
+	  }
+	}//end this for
+	  
+	
+#elif GAUSS_CURV_SCHEME	
+	 	//"Gaussian curvature" scheme
+	 	for (i=0; i< vList.size(); i++) 
+	 	{ 
+	 	  if(!vList[i]->IsBoundary())//process interior vertices
+	 	  {
+	 	    Vector3d color_Gau((vList[i]->G - min_c)/(max_c - min_c),0.0,1-(vList[i]->G - min_c)/(max_c - min_c));
+	 	    vList[i]->SetColor(color_Gau); 
+	 	  }
+	 	  else //process boundary vertices
+	 	  {
+	 		Vector3d color_max(0.0,0.0,0.0);
+	 	    vList[i]->SetColor(color_max); 
+	 	  }
+	 
+	 	}//end this for
+
+#endif
 }
 void DeleteVertex(Vertex * v)
 {

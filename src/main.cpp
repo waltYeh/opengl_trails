@@ -304,12 +304,32 @@ void DrawFlatShaded() {
 			glVertex3dv(pos3.ToArray());
 		}
 	}
+	mesh.ComputeVertexNormals();
+	mesh.ComputeVertexCurvatures();
 	glEnd();
 	
 }
 
 // Smooth Shaded render function
+/*
+double AreaOfTriangle(const Vector3d & p1, const Vector3d & p2, const Vector3d & p3)
+{
+	Vector3d sideVector;
+	sideVector = p1 - p2;
+	double a = sideVector.L2Norm();
+	sideVector = p3 - p2;
+	double b = sideVector.L2Norm();
+	sideVector = p1 - p3;
+	double c = sideVector.L2Norm();
+	double p = (a + b + c) / 2;
+	return sqrt(p*(p-a)*(p-b)*(p-c));
+}
+double AngleOfVectors(const Vector3d & p1, const Vector3d & p2)
+{
+	return acos(p1.Dot(p2)/p1.L2Norm()/p2.L2Norm());
+}*/
 void DrawSmoothShaded() {
+//	mesh.ComputeVertexNormals();
 	FaceList fList = mesh.Faces();
 	glShadeModel(GL_SMOOTH);
 	glEnable(GL_LIGHTING);
@@ -332,7 +352,96 @@ void DrawSmoothShaded() {
 }
 
 void DrawColorSmoothShaded() {
-	cout << "the colored smooth model is drawn" << endl;
+
+//	mesh.ComputeVertexCurvatures();
+//	cout << "the colored smooth model is drawn" << endl;
+/*	VertexList vList = mesh.vList;
+//	double PI = 3.14159265358979323846;
+	double max_H = 0, max_G = 0, max_K1 = 0, max_K2 = 0;
+	for (size_t i = 0; i < vList.size(); i++) {
+		Vertex* v = vList[i];
+			OneRingHEdge ringHE0(v);
+		double angle_sum = 0, area_sum = 0,h_sum=0;
+		Vector3d H_sum(0, 0, 0);
+		vector<HEdge*> vRingHE(v->Valence());
+		for (int j = 0; j < (v->Valence()); j++){
+			vRingHE[j] = ringHE0.NextHEdge();
+		}
+		for (int j = 0; j < (v->Valence()); j++){
+			HEdge *adjHE = vRingHE[j];
+			HEdge *prevHE = vRingHE[(j - 1 + v->Valence()) % (v->Valence())];
+		//	HEdge *nextHE = vRingHE[(j + 1) % (v->Valence())];
+			Face *adjF = adjHE->LeftFace();
+			Face *prevF = prevHE->LeftFace();
+			if (adjF != NULL&&prevF!=NULL){
+				Vertex * vadj = adjF->HalfEdge()->Start();
+				Vertex * vcur = adjF->HalfEdge()->End();//pointer same as v
+				Vertex * vnext = adjF->HalfEdge()->Next()->End();
+				Vertex * vprev = prevHE->End();
+
+				double area = AreaOfTriangle(vadj->Position(), vcur->Position(), vnext->Position());
+				area_sum += area;
+				double angle = AngleOfVectors(vadj->Position() - vcur->Position(), vnext->Position() - vcur->Position());
+				angle_sum += angle;
+				double alpha = AngleOfVectors(vcur->Position() - vprev->Position(), vadj->Position() - vprev->Position());
+				double beta = AngleOfVectors(vcur->Position() - vnext->Position(), vadj->Position() - vnext->Position());
+				Vector3d addition = (1.0 / tan(alpha) + 1.0 / tan(beta))*(vadj->Position() - vcur->Position());
+				H_sum += addition;
+				h_sum += addition.L2Norm();
+			}
+		}
+	//	v->H = abs(-1.0 / 2 / area_sum*H_sum.L2Norm());
+		v->H = abs(-1.0 / 2 / area_sum * h_sum);
+		v->G = abs(2 / area_sum*(2 * PI - angle_sum));
+		v->K1 = abs(v->H - sqrt(abs((v->H)*(v->H) - v->G)));
+		v->K2 = abs(v->H + sqrt(abs((v->H)*(v->H) + v->G)));
+		
+		if (max_H < (v->H)){
+			max_H = v->H;
+		}
+		if (max_G < (v->G)){
+			max_G = v->G;
+		}
+		if (max_K1 < (v->K1)){
+			max_K1 = v->K1;
+		}
+		if (max_K2 < (v->K2)){
+			max_K2 = v->K2;
+		}
+	}
+*/
+	FaceList fList = mesh.Faces();
+	glShadeModel(GL_SMOOTH);
+	glEnable(GL_LIGHTING);
+	glColor3f(0.4f, 0.4f, 1.0f);
+	glBegin(GL_TRIANGLES);
+	Vector3d rgbColor;
+	for (size_t i = 0; i<fList.size(); i++) {
+		glColor3f(0.4f, 0.4f, 1.0f);
+		Face *f = fList[i];
+		Vertex * v1 = f->HalfEdge()->Start();
+		Vertex * v2 = f->HalfEdge()->End();
+		Vertex * v3 = f->HalfEdge()->Next()->End();
+		rgbColor = v1->Color();
+		glColor3f(rgbColor[0], rgbColor[1], rgbColor[2]);
+	//	glColor3f((float)i / fList.size(), (float)i / fList.size(), (float)i / fList.size());
+		glNormal3dv(v1->Normal().ToArray());
+		glVertex3dv(v1->Position().ToArray());
+	//	glColor3f(v2->H / max_H, v2->H / max_H, v2->H / max_H);
+		rgbColor = v2->Color();
+		glColor3f(rgbColor[0], rgbColor[1], rgbColor[2]);
+	//	glColor3f((float)i / fList.size(), (float)i / fList.size(), (float)i / fList.size());
+		glNormal3dv(v2->Normal().ToArray());
+		glVertex3dv(v2->Position().ToArray());
+	//	glColor3f(v3->H / max_H, v3->H / max_H, v3->H / max_H);
+		rgbColor = v3->Color();
+		glColor3f(rgbColor[0], rgbColor[1], rgbColor[2]);
+	//	glColor3f((float)i / fList.size(), (float)i / fList.size(), (float)i / fList.size());
+		glNormal3dv(v3->Normal().ToArray());
+		glVertex3dv(v3->Position().ToArray());
+	}
+	glEnd();
+	glDisable(GL_LIGHTING);
 }
 
 
@@ -472,7 +581,8 @@ void KeyboardFunc(unsigned char ch, int x, int y) {
 	case '3':
 
 		cout << "0003" << endl;
-
+		for (int i = 0; i < 5;i++)
+			mesh.UmbrellaSmooth();
 		break;
 	case '4':
 
@@ -592,7 +702,6 @@ void SelectVertexByPoint()
 	currSelectedVertex = nearest_index;
 }
 /*****/
-
 
 // main function
 int main(int argc, char **argv) {
