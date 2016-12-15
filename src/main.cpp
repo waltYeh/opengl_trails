@@ -581,8 +581,8 @@ void KeyboardFunc(unsigned char ch, int x, int y) {
 	case '3':
 
 		cout << "0003" << endl;
-		for (int i = 0; i < 5;i++)
-			mesh.UmbrellaSmooth();
+		for (int i = 0; i < 10;i++)
+			mesh.UmbrellaSmooth(0.00005);
 		break;
 	case '4':
 
@@ -594,6 +594,7 @@ void KeyboardFunc(unsigned char ch, int x, int y) {
 		break;
 	case '6':
 		cout << "0006" << endl;
+		mesh.ImplicitUmbrellaSmooth(0.0001);
 		break;
 
 	case '1':	// key '1'
@@ -616,7 +617,6 @@ void KeyboardFunc(unsigned char ch, int x, int y) {
 	}
 	glutPostRedisplay();
 }
-
 // GLUT mouse callback function
 void MouseFunc(int button, int state, int x, int y) {
 

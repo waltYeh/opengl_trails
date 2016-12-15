@@ -321,8 +321,8 @@ public:
 	void DisplayMeshInfo();
 	void ComputeVertexNormals();
 	void ComputeVertexCurvatures();
-	void UmbrellaSmooth();
-	void ImplicitUmbrellaSmooth();
+	void UmbrellaSmooth(double lamda);
+	void ImplicitUmbrellaSmooth(double lamda);
 
 
 
@@ -337,7 +337,7 @@ public:
 	int CountBoundaryLoops();
 	int CountConnectedComponents();
 	void DFSVisit(Vertex * v);
-
+//	void ComputeVertexCurvatures();
 //	void DeleteSelectedVertex(int vertex);
 //	void Deletefaces(HEdge *v_del);
 };
@@ -346,5 +346,6 @@ public:
 inline void SetPrevNext(HEdge *e1, HEdge *e2) { e1->SetNext(e2); e2->SetPrev(e1); }
 inline void SetTwin(HEdge *e1, HEdge *e2) { e1->SetTwin(e2); e2->SetTwin(e1); }
 inline void SetFace(Face *f, HEdge *e) { f->SetHalfEdge(e); e->SetFace(f); }
-
+//inline double Cot(const Vector3d & p1, const Vector3d & p2, const Vector3d & p3);
+//inline double Area(const Vector3d & p1, const Vector3d & p2, const Vector3d & p3);
 #endif // __MESH_H__

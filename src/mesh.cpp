@@ -316,20 +316,19 @@ void Mesh::ComputeVertexNormals()
 				double area = Area(v1->Position(), v2->Position(), v3->Position());
 				norm1 += ringF->Normal_f()*area;
 			}
-
 		}
 		norm1 /= norm1.L2Norm();
 		v->SetNormal(norm1);
 	}
 }
 
-void Mesh::UmbrellaSmooth() 
+void Mesh::UmbrellaSmooth(double lamda)
 {
 #define GAUSS_CURV_SCHEME 0
 #define MEAN_CURV_SCHEME 0
 #define MAX_PRINC_CURV_SCHEME 0
 #define MIN_PRINC_CURV_SCHEME 1
-
+//	VertexList vListNew = vList;
 	//Gaussian curvature
 	size_t i;
 	double min_c = 200000;//initialize the maximum value of curvature
@@ -409,17 +408,120 @@ void Mesh::UmbrellaSmooth()
 //			double PI = 3.14159265358979323846;
 //			double G = (2.0 / v_A)*(2 * PI - Angle_v);//Gaussian curvature
 			Vector3d L = color_v / (2 * v_A); //mean curvature   
-			double lamda = 0.0002;
+		//	double lamda = 0.0005;
+			if (bheList.size() == 0)
+				vList[i]->SetCur_pos(vList[i]->Position() + lamda*L);
+			else
 			vList[i]->SetPosition(vList[i]->Position() + lamda*L);
 			//compute principle curvatures
 
 		}
 	}
+	if (bheList.size() == 0)
+		for (i = 0; i < vList.size(); i++)
+			vList[i]->SetPosition(vList[i]->Cur_pos());
 }
 
-void Mesh::ImplicitUmbrellaSmooth()
+void Mesh::ImplicitUmbrellaSmooth(double lamda)
 {
     cout<< "Implicit Umbrella Smooth starts..."<<endl;
+	
+	Matrix L(vList.size(), vList.size());
+	for (size_t i = 0; i < vList.size(); i++)
+	{
+		vector<double> weight;
+		vector<int> index;
+		if (1)//(!vList[i]->IsBoundary()) //for interior vertices only
+		{
+			double  v_A_1 = 0.0; //initialize the area of any face incident to each vertex v
+			double  v_A = 0.0;//the area of all face incident to vertex v
+			double cot_sum = 0.0;//coefficient of (vj - vi) in the mean curvature function
+			double weight_sum = 0.0;
+			HEdge *cur = vList[i]->HalfEdge();
+			HEdge *nex = cur;
+			while (nex && nex->Prev()->Twin() != cur)
+			{
+				if (nex && !nex->IsBoundary())//exclude the holes formed by boundary loops
+				{
+					const Vector3d & pos1 = vList[i]->Position();//p1
+					const Vector3d & pos2 = nex->End()->Position();//p2
+					const Vector3d & pos3 = nex->Prev()->Start()->Position();//p3
+					if (1)//(!vList[i]->IsBoundary())//if the current vertex is an interior vertex
+					{
+						const Vector3d & pos4 = nex->Prev()->Twin()->Prev()->Start()->Position();//p4, for computing the mean curvature
+						cot_sum = Cot(pos1, pos2, pos3) + Cot(pos1, pos4, pos3);
+						weight.push_back(cot_sum);
+						index.push_back(nex->End()->Index());
+					//	L.AddElement(i,nex->End()->Index(), cot_sum);
+						weight_sum += cot_sum;
+					}
+					v_A_1 = Area(pos1, pos2, pos3);
+					v_A = v_A + v_A_1;//SUM
+				}
+
+				nex = nex->Prev()->Twin();
+
+			}
+
+			//process the last nex
+			if (nex && !nex->IsBoundary())
+			{
+				const Vector3d & pos1 = vList[i]->Position();//p1
+				const Vector3d & pos2 = nex->End()->Position();//p2
+				const Vector3d & pos3 = nex->Prev()->Start()->Position();//p3
+				if (1)//(!vList[i]->IsBoundary())//if the current vertex is an interior vertex
+				{
+					const Vector3d & pos4 = nex->Prev()->Twin()->Prev()->Start()->Position();//p4, for computing the mean curvature
+					cot_sum = Cot(pos1, pos2, pos3) + Cot(pos1, pos4, pos3);
+					weight.push_back(cot_sum);
+					index.push_back(nex->End()->Index());
+				//	L.AddElement(i,nex->End()->Index(), cot_sum);
+					weight_sum += cot_sum;
+				}
+
+				v_A_1 = Area(pos1, pos2, pos3);
+				v_A = v_A + v_A_1;//SUM
+
+			}//end if
+			L.AddElement(i, i, 1+lamda*weight_sum / 2 / v_A);
+			for (int j = 0; j < index.size(); j++){
+				L.AddElement(i, index[j],-lamda* weight[j] / 2 / v_A);
+			}
+		}
+	}
+
+	L.SortMatrix();
+
+	double *x, *y, *z, *x_new, *y_new, *z_new;
+	x = new double[vList.size()];
+	y = new double[vList.size()];
+	z = new double[vList.size()];
+	x_new = new double[vList.size()];
+	y_new = new double[vList.size()];
+	z_new = new double[vList.size()];
+	for (size_t i = 0; i < vList.size(); i++){
+		Vector3d pos = vList[i]->Position();
+		x[i] = pos[0];
+		y[i] = pos[1];
+		z[i] = pos[2];
+		x_new[i] = pos[0];
+		y_new[i] = pos[1];
+		z_new[i] = pos[2];
+	}
+	
+	L.BCG(x, x_new, 3, 0.01);
+	L.BCG(y, y_new, 3, 0.01);
+	L.BCG(z, z_new, 3, 0.01);
+	for (size_t i = 0; i < vList.size(); i++){
+		Vector3d pos(x_new[i], y_new[i], z_new[i]);
+		vList[i]->SetPosition(pos);
+	}		
+	delete x;
+	delete y;
+	delete z;
+	delete x_new;
+	delete y_new;
+	delete z_new;
 }
 
 void Mesh::ComputeVertexCurvatures()
